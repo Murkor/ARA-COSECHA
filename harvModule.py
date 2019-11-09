@@ -67,17 +67,24 @@ sCampos1  = [['AREA','SUM'],['SUM_AREA','FIRST']]
 AC ="ACTAS_CERRADAS
 nac = "NUM_ACT_N"
 
+
 #------------------------------  
 def DetectaActasCerradas(testws):
 #------------------------------
     curd = arcpy.env.workspace
     arcpy.env.workspace = testws
+    atrs = [nac, 'MES_CIERRE','YEAR_CIERRE']
+    imprimir("DETECTANDO EXISTENCIA DE "+AC+ " en "+ testws)
     if not arcpy.Exists(AC):
         arcpy.CreateTable_management(arcpy.env.workspace,AC)
-        arcpy.AddField_management(AC,nac,"LONG")
+    lista = [f.name for f in arcpy.ListFields(AC)]
+    if not (atrs[0] in lista):
+        arcpy.AddField_management(AC,atrs[0],"LONG")
+    if not (atrs[1] in lista):  
+        arcpy.AddField_management(AC,atrs[1],"TEXT",12)
+    if not (atrs[2] in lista):
+        arcpy.AddField_management(AC,atrs[2],"SHORT")
     arcpy.env.workspace=curd
-        
-
 
 #------------------------------     
 def imprimir(linea):
