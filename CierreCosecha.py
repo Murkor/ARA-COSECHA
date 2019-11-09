@@ -1,4 +1,4 @@
-import arcpy
+﻿import arcpy
 import os
 import sys
 import shutil
@@ -17,6 +17,7 @@ cws  = ""
 cNR  = "Cosecha_No_Realizada"
 cosNR= "cosNR_lyr"
 AC   = "ACTAS_CERRADAS"
+RMA  = "REMANENTE_PORTAL"
 nac  = "NUM_ACTA_N"
 
 
@@ -26,6 +27,24 @@ cElim =[
     ]
 
 cElim1 =["_ZONA","_MES_CIERRE"]
+#------------------------------  
+def DetectaActasCerradas(testws):
+#------------------------------
+    curd = arcpy.env.workspace
+    arcpy.env.workspace = testws
+    atrs = [nac, 'MES_CIERRE','YEAR_CIERRE']
+    imprimir("DETECTANDO EXISTENCIA DE "+AC+ " en "+ testws)
+    if not arcpy.Exists(AC):
+        arcpy.CreateTable_management(arcpy.env.workspace,AC)
+    lista = [f.name for f in arcpy.ListFields(AC)]
+    if not (atrs[0] in lista):
+        arcpy.AddField_management(AC,atrs[0],"LONG")
+    if not (atrs[1] in lista):  
+        arcpy.AddField_management(AC,atrs[1],"TEXT",12)
+    if not (atrs[2] in lista):
+        arcpy.AddField_management(AC,atrs[2],"SHORT")
+    arcpy.env.workspace=curd
+        
 #------------------------------     
 def imprimir(linea):
 #------------------------------
@@ -78,46 +97,52 @@ def listaElim(lista,lt):
 def quitaCampos(ws,tabla):
 #-------------------------------------------------
 
-    #imprimir("QUITA CAMPOS")
+    imprimir("QUITA CAMPOS ==>"+tabla)
     #imprimir(tabla)
     lt = "T_CC_"+tabla[-4:len(tabla)]
     lr=[]
     lista = [f.name for f in arcpy.ListFields(tabla)]
     lr = listaElim(lista,lt)
+    imprimir("CALCULATE...")
     
-
-    arcpy.AddField_management(tabla,"MES_CIERRE","TEXT",10)
+    arcpy.AddField_management(tabla,"MES_CIERRE","TEXT",12)
     arcpy.AddField_management(tabla,"YEAR_CIERRE","SHORT")
     arcpy.AddField_management(tabla,"ZONA_CIERRE","TEXT",20)
     arcpy.CalculateField_management(tabla,'MES_CIERRE',"!"+lt+"_Mes_Cierre!",'PYTHON')
     arcpy.CalculateField_management(tabla,'ZONA_CIERRE',"!"+lt+"_Zona!",'PYTHON')
     agno = int(tabla[-4:len(tabla)])
     arcpy.CalculateField_management(tabla,'YEAR_CIERRE',agno,'PYTHON')
+    imprimir("FIN CALCULATE "+tabla)
     #imprimir("Lista de cols a Eliminar")
-    lr.append(lt+cElim1[0])
-    lr.append(lt+cElim1[1])
+    lista = [f.name.upper() for f in  arcpy.ListFields(ws+os.path.sep+tabla)]
+    if lt+cElim1[0] in lista:
+       lr.append(lt+cElim1[0])
+    if lt+cElim1[1] in lista:
+        lr.append(lt+cElim1[1])
     if len(lr)>0:
-       #imprimir(" a eliminar")
+       imprimir("Eliminado Columns")
        #imprimir("==========================")
-       #imprimir(lr)
+       imprimir(lr)
        arcpy.DeleteField_management(tabla, lr)
-       #imprimir("LISTO ELIMINACION")
+       imprimir("LISTO ELIMINACION")
     else:
          imprimir("=========================")
          imprimir("SIN CAMPOS A ELIMINAR")
          imprimir("=========================")
     imprimir("FRECUENCIA CON "+tabla+"\n"+ws+os.path.sep+"f"+tabla)
-    imprimir([f.name for f in arcpy.ListFields(tabla)])
     eliminarObjeto(ws+os.path.sep+ "f"+tabla)
-    arcpy.Frequency_analysis(tabla, ws+os.path.sep+ "f"+tabla,["NUM_ACTA_N","MES_CIERRE","YEAR_CIERRE"])
+    arcpy.Frequency_analysis(tabla, ws+os.path.sep+ "f"+tabla,[nac,"MES_CIERRE","YEAR_CIERRE"])
+    imprimir("LISTO FRECUENCIA CON CAMPOS")
     if arcpy.Exists("f"+tabla):
-        arcpy.AddField_management("f"+tabla,"NUM_ACTA","LONG")
-        exp = "clng(["+cNR+"_NUM_ACTA_1])"
-        imprimir(exp)
-        arcpy.CalculateField_management("f"+tabla,"NUM_ACTA",exp,"VB")
+        #imprimir([f.name for f in arcpy.ListFields("f"+tabla)])
+        ##arcpy.AddField_management("f"+tabla,nac,"LONG")
+        ##exp = "clng(["+cNR+"_NUM_ACTA_1])"
+        ##imprimir(exp)
+        ##arcpy.CalculateField_management("f"+tabla,nac,exp,"VB")
         #fm= crearMapping(AC, "f"+tabla,cNR+"_NUM_ACTA_1")
+        imprimir("APPEND..."+AC)
         arcpy.Append_management(["f"+tabla],AC, "NO_TEST")# , fm)
-        #imprimir("FIN APPEND")
+        imprimir("FIN APPEND")
  #except:
  #    lst = arcpy.GetMessages(0)
  #    imprimir(lst)
@@ -127,29 +152,35 @@ def quitaCampos(ws,tabla):
 def sacarFinalizados(tabl):
 #==========================================================
     tabla = cws + os.path.sep+ tabl
-    imprimir("finalizados...."+tabla+ " "+nac)
+    imprimir("Finalizados...  "+tabla+ " "+nac)
     a1 = arcpy.da.TableToNumPyArray(tabla, nac)
-    imprimir('1')
-    aa1= a1["NUM_ACTA_N"]
-    imprimir('2')
-    a2 = arcpy.da.TableToNumPyArray(AC, "NUM_ACTA")
-    aa2= a2["NUM_ACTA"]
-    imprimir('3')
+    imprimir('PASO 1')
+    aa1= a1[nac]
+    imprimir('PASO 2')
+    a2 = arcpy.da.TableToNumPyArray(AC, nac)
+    aa2= a2[nac]
+    imprimir('PASO 3')
     inter= np.intersect1d(aa1, aa2)
     lista =""
     for acta in inter:
         lista = lista+","+str(acta)
     expresion =""
-    if len(lista)>0:
+    
+    if len(lista)==0:
+        imprimir("NO SE HALLARON ACTAS CERRADAS ANTERIORES....")
+    else:
        lista=lista[1:]
+       imprimir(lista)
        expresion = nac+" IN ("+lista+")"
        imprimir(expresion)
        nsel, cant = seleccionar(tabl, expresion, "aElim")
-       imprimir(nsel)
-       imprimir(cant)
+       
        if cant>0:
+           imprimir("ELIMINANDO ACTAS CERRADAS ANTERIORES ==> POLS ELIM="+str(cant))
            arcpy.DeleteFeatures_management(nsel)
-           imprimir("fin deletefeatures")
+           imprimir("Fin deletefeatures")
+       else:
+           imprimir("NO SE HALLARON ACTAS CERRADAS....")
        
     
     
@@ -170,8 +201,16 @@ def crearMapping(tabla1, tabla2, colu):
  except:
      imprimir(arcpy.GetMessages())
      return []
-    
-    
+#-------------------------------------------------   
+def AgregarRemanente(ws, archivo):
+#-------------------------------------------------
+    arcpy.env.workspace = ws
+    imprimir(RMA)
+    if not arcpy.Exists(RMA):
+        sr = arcpy.Describe(archivo)
+        sr = sr.spatialReference
+        arcpy.CreateFeatureclass_management(ws, RMA, "POLYGON", archivo, spatial_reference=sr)
+    arcpy.Append_management([archivo],RMA,"NO_TEST")
 #-------------------------------------------------
 def crearDict(ws,archivo):
 #-------------------------------------------------
@@ -187,7 +226,7 @@ def crearDict(ws,archivo):
     for j in range(inicio, fin):
       tabla = "T_CC_"+str(j)
       l =""
-      #imprimir(tabla)
+      imprimir("PROCESANDO AÑO "+str(j))
       #imprimir(archivo)
       #imprimir(j)
       try:
@@ -231,7 +270,7 @@ def crearDict(ws,archivo):
 
     
         quitaCampos(ws,nombreT)
-        
+        AgregarRemanente(ws, nombreT)
         
       except:
         imprimir("Problemas procesando hoja "+str(j)+" "+l)
@@ -250,6 +289,6 @@ if __name__ == '__main__':
     cws      =  arcpy.GetParameterAsText(0)
     archivoE = r"C:\D\proyectos\2019\ARAUCO_CARTO\PLANILLAS\Actas Cerradas_2019_S4_Julio.xlsx" #
     archivoE = arcpy.GetParameterAsText(1)
-    
+    DetectaActasCerradas(cws)
     Procesar(cws, archivoE)
     

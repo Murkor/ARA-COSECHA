@@ -64,6 +64,20 @@ cDissolve1= ['TEMPORADA','ZONA','NUM_ACTA_1','CODIGO','NOM_PREDIO','FCH_LIBERA',
 sCampos   = [['NUM_ACTA','COUNT'],['AREA','SUM']]
 sCampos1  = [['AREA','SUM'],['SUM_AREA','FIRST']]
 
+AC ="ACTAS_CERRADAS
+nac = "NUM_ACT_N"
+
+#------------------------------  
+def DetectaActasCerradas(testws):
+#------------------------------
+    curd = arcpy.env.workspace
+    arcpy.env.workspace = testws
+    if not arcpy.Exists(AC):
+        arcpy.CreateTable_management(arcpy.env.workspace,AC)
+        arcpy.AddField_management(AC,nac,"LONG")
+    arcpy.env.workspace=curd
+        
+
 
 #------------------------------     
 def imprimir(linea):
@@ -707,6 +721,8 @@ if __name__ == '__main__':
          if nombre.find(".") >= 0:
             nombre = nombre[0:nombre.find(".")-1] 
          arcpy.CreateFileGDB_management(tmpDir, nombre)
+
+  DetectaActasCerradas(tmpWS)
       
   nPlanif     = "CosechaNoPlanificada"
   nPlanifFinal= "Cosecha_No_Planificada"
