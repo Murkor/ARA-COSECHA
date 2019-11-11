@@ -22,7 +22,8 @@ eco = True
 fromScr = True
 SliverRelArea = 7
 SliverRelPerim= 10
-
+agdb = "actas.gdb"
+conFecha = 0
 #eco = False
 
 carto,actas,cws,archivoE="","","",""
@@ -64,7 +65,7 @@ cDissolve1= ['TEMPORADA','ZONA','NUM_ACTA_1','CODIGO','NOM_PREDIO','FCH_LIBERA',
 sCampos   = [['NUM_ACTA','COUNT'],['AREA','SUM']]
 sCampos1  = [['AREA','SUM'],['SUM_AREA','FIRST']]
 
-AC ="ACTAS_CERRADAS
+AC ="ACTAS_CERRADAS"
 nac = "NUM_ACT_N"
 
 
@@ -73,10 +74,14 @@ def DetectaActasCerradas(testws):
 #------------------------------
     curd = arcpy.env.workspace
     arcpy.env.workspace = testws
+    imprimir("Working gdb = "+ testws)
     atrs = [nac, 'MES_CIERRE','YEAR_CIERRE']
     imprimir("DETECTANDO EXISTENCIA DE "+AC+ " en "+ testws)
-    if not arcpy.Exists(AC):
-        arcpy.CreateTable_management(arcpy.env.workspace,AC)
+
+    if not arcpy.Exists(testws+os.path.sep + AC):
+        imprimir("CREANDO "+AC)
+        arcpy.CreateTable_management(testws,AC)
+    imprimir(AC+ " HALLADA EN "+testws)
     lista = [f.name for f in arcpy.ListFields(AC)]
     if not (atrs[0] in lista):
         arcpy.AddField_management(AC,atrs[0],"LONG")
@@ -293,8 +298,9 @@ def SelyAppend(fc, fcsalida, expresion):
         imprimir("SELECT & append con "+fc+"-->"+fcsalida+" ==>"+expresion)
     seleccion, cantidad = seleccionar(fc, expresion)
     if eco:
-        imprimir(seleccion)
+        imprimir(seleccion+ " ==> "+ str(cantidad))
     if cantidad > 0:
+        imprimir("input ="+seleccion+" salida ="+fcsalida)
         arcpy.Append_management(seleccion, fcsalida, schema_type='NO_TEST')
     
 #---------------------------------------------
@@ -697,6 +703,7 @@ if __name__ == '__main__':
     minArea     = arcpy.GetParameterAsText(3)
     #archivoE    = arcpy.GetParameterAsText(4)
     tmpWS       = arcpy.GetParameterAsText(4)
+    tmpWS       = tmpWS + os.sep.path + agdb
     #conFecha    = arcpy.GetParameter(5)
     conFecha    = 0
     if conFecha ==1:
@@ -724,9 +731,12 @@ if __name__ == '__main__':
   #layerDir = os.path.dirname(cws)+os.path.sep+"Temas"
   if not arcpy.Exists(tmpWS):
          tmpDir = os.path.dirname(tmpWS)
-         nombre = os.path.basename(a)
+         nombre = os.path.basename(tmpWS)
+         imprimir(tmpDir)
+         imprimir(nombre)
          if nombre.find(".") >= 0:
-            nombre = nombre[0:nombre.find(".")-1] 
+            nombre = nombre[0:nombre.find(".")]
+            imprimir(nombre)
          arcpy.CreateFileGDB_management(tmpDir, nombre)
 
   DetectaActasCerradas(tmpWS)
