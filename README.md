@@ -15,11 +15,11 @@ para que se actualice la columna HAS.
 >
 > donec malesuada aliquam **gravida**.
 ### crazy good development
-* Rapid development
+* not Rapid development
 + Tested
 - 24/7 not support
 
-### Reason to choose not us
+### Reason to don't choose us
 1. Price
 2. Precision
 3. Performance
