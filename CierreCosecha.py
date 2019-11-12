@@ -33,7 +33,7 @@ def DetectaActasCerradas(testws):
     curd = arcpy.env.workspace
     arcpy.env.workspace = testws
     atrs = [nac, 'MES_CIERRE','YEAR_CIERRE']
-    imprimir("DETECTANDO EXISTENCIA DE "+AC+ " en "+ testws)
+    imprimir("\nDETECTANDO EXISTENCIA DE "+AC+ " en "+ testws)
     if not arcpy.Exists(AC):
         arcpy.CreateTable_management(arcpy.env.workspace,AC)
     lista = [f.name for f in arcpy.ListFields(AC)]
@@ -154,12 +154,12 @@ def sacarFinalizados(tabl):
     tabla = cws + os.path.sep+ tabl
     imprimir("Finalizados...  "+tabla+ " "+nac)
     a1 = arcpy.da.TableToNumPyArray(tabla, nac)
-    imprimir('PASO 1')
+    imprimir('PASO 1- Detectando Actas no cosechadas')
     aa1= a1[nac]
-    imprimir('PASO 2')
+    imprimir('PASO 2- Detectando Actas Cerradas')
     a2 = arcpy.da.TableToNumPyArray(AC, nac)
     aa2= a2[nac]
-    imprimir('PASO 3')
+    imprimir('PASO 3- Comparando ...')
     inter= np.intersect1d(aa1, aa2)
     lista =""
     for acta in inter:
@@ -205,10 +205,10 @@ def crearMapping(tabla1, tabla2, colu):
 def AgregarRemanente(ws, archivo):
 #-------------------------------------------------
     arcpy.env.workspace = ws
-    imprimir(RMA)
-    if not arcpy.Exists(RMA):
+    if not arcpy.Exists( ws + os.path.sep + RMA):
         sr = arcpy.Describe(archivo)
         sr = sr.spatialReference
+        imprimir("\nCreando "+RMA+ " en "+ ws)
         arcpy.CreateFeatureclass_management(ws, RMA, "POLYGON", archivo, spatial_reference=sr)
     arcpy.Append_management([archivo],RMA,"NO_TEST")
 #-------------------------------------------------
@@ -226,7 +226,7 @@ def crearDict(ws,archivo):
     for j in range(inicio, fin):
       tabla = "T_CC_"+str(j)
       l =""
-      imprimir("PROCESANDO AÑO "+str(j))
+      imprimir("\n============================\nPROCESANDO AÑO "+str(j))
       #imprimir(archivo)
       #imprimir(j)
       try:
@@ -270,18 +270,44 @@ def crearDict(ws,archivo):
 
     
         quitaCampos(ws,nombreT)
+        imprimir("Procesando Remanente --->"+RMA+ " con "+nombreT)
         AgregarRemanente(ws, nombreT)
         
       except:
         imprimir("Problemas procesando hoja "+str(j)+" "+l)
-    
 
 #-------------------------------------------------
-def Procesar(ws, actasCerradas): 
+def subirAOracle(ws,destino):
+#-------------------------------------------------
+     finP = 1
+     if ws.upper() == destino.upper():
+        imprimir("PROBLEMAS ==> LOCAL WS ="+ws+ " ES IGUAL A DESTINO : "+destino)
+        return finP
+     if arcpy.Exists(ws+os.path.sep + RMA) and arcpy.Exists(destino+os.path.sep+RMA):
+         cant = arcpy.GetCount_management(ws+os.path.sep + RMA)
+         finP = 0
+         if cant >0:
+            arcpy.Append_management([ws+os.path.sep + RMA], destino+os.path.sep+RMA, "NO_TEST")
+            arcpy.DeleteFeatures_management(ws+os.path.sep + RMA)
+            imprimir("\n==============================\nSE AGREGRARON " + str(cant) +" POLIGONOS DE REMANENTES")
+         else:
+             imprimir("\n==============================\nNO HAY NUEVOS POLIGONOS PARA SUBIR A PORTAL")
+            
+     else:
+         imprimir("\n==============================\nNO EXISTE "+ RMA +' en '+ws+" y/o en "+destino)
+         
+     return finP
+
+#-------------------------------------------------
+def Procesar(ws, actasCerradas, destino):
+#-------------------------------------------------
     arcpy.env.workspace = ws
     arcpy.env.overwriteOutput = True
     arcpy.MakeFeatureLayer_management (ws + os.path.sep + cNR,  cosNR )
     crearDict(ws, actasCerradas)
+    indicador  = subirAOracle(ws, destino)
+    lista =['PROCESO FINALIZADO NORMAL', 'PROCESO FINALIZADO CON PROBLEMAS *****************']
+    imprimir("\n=====================================\n"+lista[indicador])
     
 
 if __name__ == '__main__':
@@ -289,6 +315,15 @@ if __name__ == '__main__':
     cws      =  arcpy.GetParameterAsText(0)
     archivoE = r"C:\D\proyectos\2019\ARAUCO_CARTO\PLANILLAS\Actas Cerradas_2019_S4_Julio.xlsx" #
     archivoE = arcpy.GetParameterAsText(1)
+    destino  = arcpy.GetParameterAsText(2)
+    for suf in ["","0","1","2","3","4","5","6","7"]:
+            tabla = cws + os.path.sep + "UNION"+suf
+            eliminarObjeto(tabla)
+    #if not arcpy.Exists(destino + os.path.sep + RMA):
+    #    imprimir("PROBLEMAS NO EXISTE "+ RMA +" en "+destino)
+    #else:
     DetectaActasCerradas(cws)
-    Procesar(cws, archivoE)
+
+    Procesar(cws, archivoE, destino)
+        
     

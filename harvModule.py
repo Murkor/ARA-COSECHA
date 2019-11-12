@@ -16,8 +16,10 @@ global actas
 global cws
 global archivoE
 global layerDir
+global tmpWS
 #----------------------------------------------
 eps = 0.001
+uSDE = 'SDEUSER1'
 eco = True
 fromScr = True
 SliverRelArea = 7
@@ -618,6 +620,11 @@ def Procesar(scrWS, cartografia, planificado, consFecha=False):
     
 
     actas_simple="ACTAS_SINGLE"
+    imprimir("DISSOLVE CON "+ planificado + " ==> "+actas_simple)
+    imprimir("CAMPOS  =")
+    imprimir(cDissolve)
+    imprimir("stat ..")
+    imprimir(sCampos)
     arcpy.Dissolve_management(planificado, actas_simple,cDissolve, sCampos)
     agregarHAS(actas_simple, "AREA")
     agregarHAS(cartografia,  "AREA")
@@ -681,7 +688,37 @@ def Procesar(scrWS, cartografia, planificado, consFecha=False):
      lToc(mxd, nAvanceG)
     except:
         pass
-    
+#------------------------------
+def copiaAtmp(ws,lista):
+#------------------------------
+    arcpy.env.workspace = ws
+    arcpy.env.overwriteOutput = True
+    capasn =[]
+    for FF in lista:
+        f = FF
+        where =""
+        if type(FF) is list:
+            f = FF[0]
+            if len(FF)==2:
+                where = FF[1]
+        d = arcpy.Describe(f)
+        bn = d.basename
+        bn = bn.replace(uSDE,"")
+        bn = bn.replace(".","")
+        fci = ws + os.path.sep + bn
+        if arcpy.Exists(fci):
+            arcpy.Delete_management(fci)
+        if len(where)>0:
+             sel, cant = seleccionar(f, where)
+             imprimir("SELECCION ="+ sel +" CANT = "+str(cant))
+             arcpy.CopyFeatures_management(sel, fci)
+        else:
+             arcpy.Copy_management(f, fci)
+        agregarHAS(fci, "AREA")
+        capasn.append(fci)
+    return  capasn[0], capasn[1]
+        
+            
     
 if __name__ == '__main__':
 
@@ -703,7 +740,7 @@ if __name__ == '__main__':
     minArea     = arcpy.GetParameterAsText(3)
     #archivoE    = arcpy.GetParameterAsText(4)
     tmpWS       = arcpy.GetParameterAsText(4)
-    tmpWS       = tmpWS + os.sep.path + agdb
+    tmpWS       = tmpWS + os.path.sep + agdb
     #conFecha    = arcpy.GetParameter(5)
     conFecha    = 0
     if conFecha ==1:
@@ -738,6 +775,8 @@ if __name__ == '__main__':
             nombre = nombre[0:nombre.find(".")]
             imprimir(nombre)
          arcpy.CreateFileGDB_management(tmpDir, nombre)
+
+  actas, carto = copiaAtmp(tmpWS, [actas, [carto,"FCH_TRAN IS NOT NULL"]])
 
   DetectaActasCerradas(tmpWS)
       
