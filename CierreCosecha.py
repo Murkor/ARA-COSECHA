@@ -19,7 +19,8 @@ cosNR= "cosNR_lyr"
 AC   = "ACTAS_CERRADAS"
 RMA  = "REMANENTE_PORTAL"
 nac  = "NUM_ACTA_N"
-
+uOracle = "SDEUSER1"
+oRMA    = uOracle + "." + RMA
 
 #-------------------------------------------------
 cElim =[
@@ -283,11 +284,11 @@ def subirAOracle(ws,destino):
      if ws.upper() == destino.upper():
         imprimir("PROBLEMAS ==> LOCAL WS ="+ws+ " ES IGUAL A DESTINO : "+destino)
         return finP
-     if arcpy.Exists(ws+os.path.sep + RMA) and arcpy.Exists(destino+os.path.sep+RMA):
+     if arcpy.Exists(ws+os.path.sep + RMA) and arcpy.Exists(destino+os.path.sep+oRMA):
          cant = arcpy.GetCount_management(ws+os.path.sep + RMA)
          finP = 0
          if cant >0:
-            arcpy.Append_management([ws+os.path.sep + RMA], destino+os.path.sep+RMA, "NO_TEST")
+            arcpy.Append_management([ws+os.path.sep + RMA], destino+os.path.sep+oRMA, "NO_TEST")
             arcpy.DeleteFeatures_management(ws+os.path.sep + RMA)
             imprimir("\n==============================\nSE AGREGRARON " + str(cant) +" POLIGONOS DE REMANENTES")
          else:
