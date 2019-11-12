@@ -12,7 +12,7 @@ import numpy as np
 
 global cws
 iso ='utf-8'
-eco = True
+eco = False
 cws  = ""
 cNR  = "Cosecha_No_Realizada"
 cosNR= "cosNR_lyr"
@@ -35,6 +35,7 @@ def DetectaActasCerradas(testws):
     atrs = [nac, 'MES_CIERRE','YEAR_CIERRE']
     imprimir("\nDETECTANDO EXISTENCIA DE "+AC+ " en "+ testws)
     if not arcpy.Exists(AC):
+        imprimir("CREANDO "+AC+"....")
         arcpy.CreateTable_management(arcpy.env.workspace,AC)
     lista = [f.name for f in arcpy.ListFields(AC)]
     if not (atrs[0] in lista):
@@ -79,31 +80,23 @@ def InicioFin():
 def listaElim(lista,lt):
 #-------------------------------------------------
     lr=[]
-    #imprimir("LISTA ELIM entrando")
-    #for camp in lista:
-        #imprimir(camp)
+
     for camp in lista:
         campo = camp.upper()
-        #imprimir(campo)
         a = campo.startswith(lt) and campo != lt+cElim1[0] and campo != lt+cElim1[1]
-        #imprimir(str(a))
         if a:
-                #imprimir("candidato hallado!!")
                 lr.append(camp)
-    #imprimir("SALIENDO...")
-    #imprimir(lr)
     return lr
 #-------------------------------------------------
 def quitaCampos(ws,tabla):
 #-------------------------------------------------
 
-    imprimir("QUITA CAMPOS ==>"+tabla)
-    #imprimir(tabla)
     lt = "T_CC_"+tabla[-4:len(tabla)]
     lr=[]
     lista = [f.name for f in arcpy.ListFields(tabla)]
     lr = listaElim(lista,lt)
-    imprimir("CALCULATE...")
+    if eco:
+        imprimir("ADD & CALCULATE, MES_CIERRE, YEAR_CIERRE, ZONA_CIERRE")
     
     arcpy.AddField_management(tabla,"MES_CIERRE","TEXT",12)
     arcpy.AddField_management(tabla,"YEAR_CIERRE","SHORT")
@@ -112,27 +105,31 @@ def quitaCampos(ws,tabla):
     arcpy.CalculateField_management(tabla,'ZONA_CIERRE',"!"+lt+"_Zona!",'PYTHON')
     agno = int(tabla[-4:len(tabla)])
     arcpy.CalculateField_management(tabla,'YEAR_CIERRE',agno,'PYTHON')
-    imprimir("FIN CALCULATE "+tabla)
-    #imprimir("Lista de cols a Eliminar")
+    if eco:
+        imprimir("FIN CALCULATE "+tabla)
+    
     lista = [f.name.upper() for f in  arcpy.ListFields(ws+os.path.sep+tabla)]
     if lt+cElim1[0] in lista:
        lr.append(lt+cElim1[0])
     if lt+cElim1[1] in lista:
         lr.append(lt+cElim1[1])
     if len(lr)>0:
-       imprimir("Eliminado Columns")
-       #imprimir("==========================")
-       imprimir(lr)
+       if eco: 
+          imprimir("Eliminado Columns")
+          imprimir(lr)
        arcpy.DeleteField_management(tabla, lr)
-       imprimir("LISTO ELIMINACION")
+       if eco:
+          imprimir("LISTO ELIMINACION")
     else:
          imprimir("=========================")
-         imprimir("SIN CAMPOS A ELIMINAR")
+         imprimir("SIN CAMPOS A ELIMINAR "+tabla)
          imprimir("=========================")
-    imprimir("FRECUENCIA CON "+tabla+"\n"+ws+os.path.sep+"f"+tabla)
+    if eco:
+       imprimir("FRECUENCIA CON "+tabla+"\n"+ws+os.path.sep+"f"+tabla)
     eliminarObjeto(ws+os.path.sep+ "f"+tabla)
     arcpy.Frequency_analysis(tabla, ws+os.path.sep+ "f"+tabla,[nac,"MES_CIERRE","YEAR_CIERRE"])
-    imprimir("LISTO FRECUENCIA CON CAMPOS")
+    if eco:
+        imprimir("LISTO FRECUENCIA CON CAMPOS")
     if arcpy.Exists("f"+tabla):
         #imprimir([f.name for f in arcpy.ListFields("f"+tabla)])
         ##arcpy.AddField_management("f"+tabla,nac,"LONG")
@@ -140,9 +137,11 @@ def quitaCampos(ws,tabla):
         ##imprimir(exp)
         ##arcpy.CalculateField_management("f"+tabla,nac,exp,"VB")
         #fm= crearMapping(AC, "f"+tabla,cNR+"_NUM_ACTA_1")
-        imprimir("APPEND..."+AC)
+        if eco:
+           imprimir("APPEND..."+AC)
         arcpy.Append_management(["f"+tabla],AC, "NO_TEST")# , fm)
-        imprimir("FIN APPEND")
+        if eco:
+            imprimir("FIN APPEND")
  #except:
  #    lst = arcpy.GetMessages(0)
  #    imprimir(lst)
@@ -152,7 +151,8 @@ def quitaCampos(ws,tabla):
 def sacarFinalizados(tabl):
 #==========================================================
     tabla = cws + os.path.sep+ tabl
-    imprimir("Finalizados...  "+tabla+ " "+nac)
+    if eco:
+       imprimir("Finalizados...  "+tabla+ " "+nac)
     a1 = arcpy.da.TableToNumPyArray(tabla, nac)
     imprimir('PASO 1- Detectando Actas no cosechadas')
     aa1= a1[nac]
