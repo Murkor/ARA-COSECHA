@@ -21,7 +21,8 @@ RMA     = "REMANENTE_PORTAL"
 nac     = "NUM_ACTA_N"
 uOracle = "SDEUSER1"
 dSet    = "Produccion"
-oRMA    = dSet + os.path.sep + uOracle + "." + RMA
+oRMA1    =  uOracle + "." + RMA
+oRMA   = dSet + os.path.sep + oRMA
 
 
 #-------------------------------------------------
@@ -327,7 +328,19 @@ def Procesar(ws, actasCerradas, destino):
     indicador  = subirAOracle(ws, destino)
     lista =['PROCESO FINALIZADO NORMAL', 'PROCESO FINALIZADO CON PROBLEMAS *****************']
     imprimir("\n=====================================\n"+lista[indicador])
+
+def verificaDS(destino, lista):
+
+    ret = "PROBLEMA"
     
+    for i in lista:
+        g1 = destino + os.path.sep + i
+        if arcpy.Exists(g1):
+            imprimir("DESTINO ===> "+g1)
+            ret = i
+            break
+    return ret
+       
 
 if __name__ == '__main__':
     cws      = r"c:\temp\actas.gdb" #
@@ -338,13 +351,21 @@ if __name__ == '__main__':
     for suf in ["","0","1","2","3","4","5","6","7"]:
             tabla = cws + os.path.sep + "UNION"+suf
             eliminarObjeto(tabla)
+            
     #if not arcpy.Exists(destino + os.path.sep + RMA):
     #    imprimir("PROBLEMAS NO EXISTE "+ RMA +" en "+destino)
     #else:
     DetectaActasCerradas(cws)
     if tipoBase(destino) == "LocalDatabase":
-        oRMA = RMA
+        oRMA = oRMA.replace(uOracle+".","")
+        oRMA1 = oRMA1.replace(uOracle+".","")
+                     
+    res = verificaDS(destino, [oRMA, oRMA1, RMA] )
 
-    Procesar(cws, archivoE, destino)
+    if res == "PROBLEMA":
+        imprimir("NO EXISTE DESTINO "+ destino + " con " + oRMA + " ni "+ oRMA1 + " ni " + RMA)
+    else:
+        oRMA = res
+        Procesar(cws, archivoE, destino)
         
     
