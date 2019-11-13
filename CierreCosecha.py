@@ -8,26 +8,33 @@ import tempfile
 import time
 from   xlrd import open_workbook, cellname
 import numpy as np
-
+import ConfigParser
 
 global cws
 iso ='utf-8'
-eco = False
-cws  = ""
-cNR  = "Cosecha_No_Realizada"
-cosNR= "cosNR_lyr"
-AC   = "ACTAS_CERRADAS"
-RMA  = "REMANENTE_PORTAL"
-nac  = "NUM_ACTA_N"
+eco     = False
+cws     = ""
+cNR     = "Cosecha_No_Realizada"
+cosNR   = "cosNR_lyr"
+AC      = "ACTAS_CERRADAS"
+RMA     = "REMANENTE_PORTAL"
+nac     = "NUM_ACTA_N"
 uOracle = "SDEUSER1"
-oRMA    = uOracle + "." + RMA
+dSet    = "Produccion"
+oRMA    = dSet + os.path.sep + uOracle + "." + RMA
+
 
 #-------------------------------------------------
 cElim =[
     "field", "field_1","field_1_2","field_1__3"
     ]
-
 cElim1 =["_ZONA","_MES_CIERRE"]
+
+#------------------------------
+def tipoBase(ws):
+#------------------------------
+    d = arcpy.Describe(ws)
+    return d.workspaceType
 #------------------------------  
 def DetectaActasCerradas(testws):
 #------------------------------
@@ -157,11 +164,17 @@ def sacarFinalizados(tabl):
     a1 = arcpy.da.TableToNumPyArray(tabla, nac)
     imprimir('PASO 1- Detectando Actas no cosechadas')
     aa1= a1[nac]
+
     imprimir('PASO 2- Detectando Actas Cerradas')
     a2 = arcpy.da.TableToNumPyArray(AC, nac)
     aa2= a2[nac]
+
     imprimir('PASO 3- Comparando ...')
     inter= np.intersect1d(aa1, aa2)
+    if eco:
+     imprimir(aa1)
+     imprimir(aa2)
+     imprimir(inter)
     lista =""
     for acta in inter:
         lista = lista+","+str(acta)
@@ -252,7 +265,12 @@ def crearDict(ws,archivo):
         eliminarObjeto(nombreT)
         l="Add join"
         #imprimir("CREANDO JOIN CON "+cosNR + " y "+tabla)
-        arcpy.AddJoin_management(cosNR,"NUM_ACTA_1",tabla,"strActa","KEEP_COMMON")
+        cant1 = arcpy.GetCount_management(cosNR)
+        if eco:
+            imprimir("CosNR con "+ str(cant1))
+        arcpy.AddJoin_management(cosNR,"NUM_ACTA_1",tabla,"strActa",join_type="KEEP_COMMON")
+        if eco:
+            imprimir("CosNR con JOIN  "+ str(arcpy.GetCount_management(cosNR)))
         l="Copy Features.."
 
         #imprimir("JOIN CREADO\nCOPIANDO "+cosNR+ " "+nombreT+"\n"+arcpy.env.workspace)
@@ -324,6 +342,8 @@ if __name__ == '__main__':
     #    imprimir("PROBLEMAS NO EXISTE "+ RMA +" en "+destino)
     #else:
     DetectaActasCerradas(cws)
+    if tipoBase(destino) == "LocalDatabase":
+        oRMA = RMA
 
     Procesar(cws, archivoE, destino)
         
